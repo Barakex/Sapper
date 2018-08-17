@@ -1,0 +1,25 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  margin: 50px;
+}
+
+#sapper .row {
+  display: flex;
+}
+
+#sapper .row .item {
+  margin: 3px;
+}
+
+.inputsConteiner {
+  display: flex;
+}
+
