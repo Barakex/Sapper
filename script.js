@@ -4,13 +4,15 @@ var MyMineSweeper = {
     this.Height = obj ? obj.Height : 7;
     this.bomb = obj ? obj.bomb : 4;
     this.data = [];
+    this.defusedBombsCount = 0;
+    this.flagCount = 0;
     this.generateData();
   },
 
   generateData: function () {
     var widthWithBorder = this.Width + 2;
     var heightWithBorder = this.Height + 2;
-    
+
     // Genering map
     for (var i = 0; i < widthWithBorder; i += 1) {
       this.data.push([]);
@@ -22,6 +24,7 @@ var MyMineSweeper = {
         }
       }
     }
+
     // Genering bombs
     var bombsCords = function (fields) {
       return Math.floor(Math.random()*(fields - 1) + 1);
@@ -35,7 +38,7 @@ var MyMineSweeper = {
       }
       this.data[randX][randY] = 88;
     }
-    
+
     // Genering fields
     for (var i = 0; i < this.Width; i += 1) {
       for (var j = 0; j < this.Height; j += 1) {
@@ -47,7 +50,6 @@ var MyMineSweeper = {
     console.log(this.data);
     this.generateGUI();
   },
-
 
   // Generate numbers rules
   placeNumbers: function(x, y) {
@@ -87,6 +89,7 @@ var MyMineSweeper = {
   createTimer: function (elem) {
     var timer = document.createElement('div');
     var timerVal = 0;
+    timer.className = 'timer';
     timer.innerHTML = timerVal;
     elem.appendChild(timer);
     setInterval(function() {
@@ -97,20 +100,23 @@ var MyMineSweeper = {
 
   generateGUI: function () {
     var sapper = document.getElementById('sapper');
+    var field = document.createElement('div');
+    field.className = 'field';
     this.createTimer(sapper);
-
     // Generate fields
     for (var i = 0; i < this.data.length; i += 1) {
+     
       var row = document.createElement('div');
       row.className = 'row';
-      sapper.appendChild(row);
+      field.appendChild(row);
+      sapper.appendChild(field);
       for (var j = 0; j < this.data[i].length; j += 1) {
         var hiddenCell = document.createElement('div');
         hiddenCell.className = 'item';
         if (this.data[i][j] !== -1) {
           var callOnce = this.clickOnCell.bind(this, this.data, i, j);
-          var flagBomb = this.defuseTheBomb.bind(this, this.data[i][j]);
-          hiddenCell.className = ' item hiddenCell';
+          var flagBomb = this.defuseTheBomb.bind(this, this.data, i, j);
+          hiddenCell.className = 'item hiddenCell';
           hiddenCell.addEventListener('click', callOnce);
           hiddenCell.addEventListener('contextmenu', flagBomb);
         }
@@ -119,24 +125,10 @@ var MyMineSweeper = {
     }
   },
 
-  defuseTheBomb: function(data) {
-    event.preventDefault();
-    
-    if (!event.target.getAttribute('data-check')) {
-      event.target.innerHTML = 'C';
-    }
-  },
-
-  clickOnCell: function (data, x, y) {
+  generateArrayNodeElements: function () {
     var hiddenCell = document.getElementsByClassName('item');
     var arr = [];
     var cells = [];
-
-    if (data[x][y] < 0) {
-      return; 
-    }
-
-    // Generate array NodeElements 
     for (var i = 0; i < hiddenCell.length; i += 1) {
       if (i % (this.Width + 2) === 0) {
         cells = [];
@@ -146,37 +138,69 @@ var MyMineSweeper = {
         cells.push(hiddenCell[i]);
       }
     }
+    return arr;
+  },
 
+  defuseTheBomb: function(data, x, y) {
+    var sapper = document.getElementById('sapper');
+    event.preventDefault();
+
+    if (this.flagCount > 0 && event.target.textContent === 'C') {
+      while (event.target.firstChild) {
+        event.target.removeChild(event.target.firstChild);
+      }
+      this.flagCount -= 1;
+    } else if (this.flagCount < this.bomb && !event.target.getAttribute('data-check')) {
+      event.target.innerHTML = 'C';
+      this.flagCount += 1;
+    }
+
+    if (data[x][y] === 88 && event.target.textContent === 'C') {
+      this.defusedBombsCount += 1;
+    } else if (this.flagCount < this.bomb && data[x][y] === 88 && event.target.textContent !== 'C') {
+      this.defusedBombsCount -= 1;
+    }
+
+    // win event
+    if (this.defusedBombsCount === this.bomb) {
+      var win = document.createElement('div');
+      win.className = 'winContainer';
+      win.innerHTML = 'You win!';
+      sapper.appendChild(win);
+    }
+  },
+
+  clickOnCell: function (data, x, y) {
+    var arrayNode = this.generateArrayNodeElements();
     if (event.target.textContent === 'C') {
       while (event.target.firstChild) {
         event.target.removeChild(event.target.firstChild);
       }
-    } 
+    }
 
     // Enter from recursion
-    if (arr[x][y].getAttribute('data-check')) {
+    if (data[x][y] < 0 || arrayNode[x][y].getAttribute('data-check')) {
       return;
     }
 
     // Recursion
     if (data[x][y] === 0) {
-      arr[x][y].setAttribute('data-check', true);
-      
+      arrayNode[x][y].setAttribute('data-check', true);
       this.clickOnCell(data, x, y+1); // Right
       this.clickOnCell(data, x+1, y); // Down
       this.clickOnCell(data, x+1, y+1); // Down Right
       this.clickOnCell(data, x, y-1); // Left
       this.clickOnCell(data, x-1, y); // Up
       this.clickOnCell(data, x-1, y-1); // Up Left
+    } else if (data[x][y] === 88) {
+      var loss = document.createElement('div');
+      loss.className = 'lossContainer';
+      loss.innerHTML = 'You loss';
+      sapper.appendChild(loss);
     } else {
-      arr[x][y].innerHTML = data[x][y];
+      arrayNode[x][y].innerHTML = data[x][y];
     }
   },
 };
 
 MyMineSweeper.init();
-
-
-//     while (sapper.firstChild) {
-//       sapper.removeChild(sapper.firstChild);
-//     }
