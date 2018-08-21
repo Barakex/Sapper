@@ -1,8 +1,9 @@
 var MyMineSweeper = {
   init: function (obj) {
-    this.Width = obj ? obj.Width : 7;
-    this.Height = obj ? obj.Height : 7;
-    this.bomb = obj ? obj.bomb : 4;
+    this.gameActive = true;
+    this.Width = obj ? obj.Width : 10;
+    this.Height = obj ? obj.Height : 10;
+    this.bomb = obj ? obj.bomb : 7;
     this.data = [];
     this.defusedBombsCount = 0;
     this.flagCount = 0;
@@ -88,11 +89,11 @@ var MyMineSweeper = {
 
   createTimer: function (elem) {
     var timer = document.createElement('div');
-    var timerVal = 0;
+    timerVal = 0;
     timer.className = 'timer';
     timer.innerHTML = timerVal;
     elem.appendChild(timer);
-    setInterval(function() {
+    this.timer = setInterval(function() {
       timerVal += 1;
       timer.innerHTML = timerVal;
     }, 1000);
@@ -105,7 +106,6 @@ var MyMineSweeper = {
     this.createTimer(sapper);
     // Generate fields
     for (var i = 0; i < this.data.length; i += 1) {
-     
       var row = document.createElement('div');
       row.className = 'row';
       field.appendChild(row);
@@ -142,65 +142,73 @@ var MyMineSweeper = {
   },
 
   defuseTheBomb: function(data, x, y) {
-    var sapper = document.getElementById('sapper');
-    event.preventDefault();
+    if (this.gameActive) {
+      var sapper = document.getElementById('sapper');
+      event.preventDefault();
 
-    if (this.flagCount > 0 && event.target.textContent === 'C') {
-      while (event.target.firstChild) {
-        event.target.removeChild(event.target.firstChild);
+      if (this.flagCount > 0 && event.target.textContent === 'C') {
+        while (event.target.firstChild) {
+          event.target.removeChild(event.target.firstChild);
+        }
+        this.flagCount -= 1;
+      } else if (this.flagCount < this.bomb && !event.target.getAttribute('data-check')) {
+        event.target.innerHTML = 'C';
+        this.flagCount += 1;
       }
-      this.flagCount -= 1;
-    } else if (this.flagCount < this.bomb && !event.target.getAttribute('data-check')) {
-      event.target.innerHTML = 'C';
-      this.flagCount += 1;
-    }
 
-    if (data[x][y] === 88 && event.target.textContent === 'C') {
-      this.defusedBombsCount += 1;
-    } else if (this.flagCount < this.bomb && data[x][y] === 88 && event.target.textContent !== 'C') {
-      this.defusedBombsCount -= 1;
-    }
+      if (data[x][y] === 88 && event.target.textContent === 'C') {
+        this.defusedBombsCount += 1;
+      } else if (this.flagCount < this.bomb && data[x][y] === 88 && event.target.textContent !== 'C') {
+        this.defusedBombsCount -= 1;
+      }
 
-    // win event
-    if (this.defusedBombsCount === this.bomb) {
-      var win = document.createElement('div');
-      win.className = 'winContainer';
-      win.innerHTML = 'You win!';
-      sapper.appendChild(win);
+      // win event
+      if (this.defusedBombsCount === this.bomb) {
+        var win = document.createElement('div');
+        win.className = 'winContainer';
+        win.innerHTML = 'You win!';
+        sapper.appendChild(win);
+        clearInterval(this.timer); 
+        this.gameActive = false;
+      }
     }
   },
 
   clickOnCell: function (data, x, y) {
     var arrayNode = this.generateArrayNodeElements();
-    if (event.target.textContent === 'C') {
-      while (event.target.firstChild) {
-        event.target.removeChild(event.target.firstChild);
+    if (this.gameActive) {
+      if (event.target.textContent === 'C') {
+        while (event.target.firstChild) {
+          event.target.removeChild(event.target.firstChild);
+        }
+      }
+
+      // Enter from recursion
+      if (data[x][y] < 0 || arrayNode[x][y].getAttribute('data-check')) {
+        return;
+      }
+
+      // Recursion
+      if (data[x][y] === 0) {
+        arrayNode[x][y].setAttribute('data-check', true);
+        this.clickOnCell(data, x, y+1); // Right
+        this.clickOnCell(data, x+1, y); // Down
+        this.clickOnCell(data, x+1, y+1); // Down Right
+        this.clickOnCell(data, x, y-1); // Left
+        this.clickOnCell(data, x-1, y); // Up
+        this.clickOnCell(data, x-1, y-1); // Up Left
+      } else if (data[x][y] === 88) {
+        var loss = document.createElement('div');
+        loss.className = 'lossContainer';
+        loss.innerHTML = 'You loss';
+        sapper.appendChild(loss);
+        clearInterval(this.timer); 
+        this.gameActive = false;
+      } else {
+        arrayNode[x][y].innerHTML = data[x][y];
       }
     }
-
-    // Enter from recursion
-    if (data[x][y] < 0 || arrayNode[x][y].getAttribute('data-check')) {
-      return;
-    }
-
-    // Recursion
-    if (data[x][y] === 0) {
-      arrayNode[x][y].setAttribute('data-check', true);
-      this.clickOnCell(data, x, y+1); // Right
-      this.clickOnCell(data, x+1, y); // Down
-      this.clickOnCell(data, x+1, y+1); // Down Right
-      this.clickOnCell(data, x, y-1); // Left
-      this.clickOnCell(data, x-1, y); // Up
-      this.clickOnCell(data, x-1, y-1); // Up Left
-    } else if (data[x][y] === 88) {
-      var loss = document.createElement('div');
-      loss.className = 'lossContainer';
-      loss.innerHTML = 'You loss';
-      sapper.appendChild(loss);
-    } else {
-      arrayNode[x][y].innerHTML = data[x][y];
-    }
-  },
+  }
 };
 
 MyMineSweeper.init();
