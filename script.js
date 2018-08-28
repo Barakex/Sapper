@@ -3,7 +3,7 @@ var MyMineSweeper = {
     this.gameActive = true;
     this.Width = obj ? obj.Width : 10;
     this.Height = obj ? obj.Height : 10;
-    this.bomb = obj ? obj.bomb : 7;
+    this.bomb = obj ? obj.bomb : 15;
     this.data = [];
     this.defusedBombsCount = 0;
     this.flagCount = 0;
@@ -123,6 +123,41 @@ var MyMineSweeper = {
         row.appendChild(hiddenCell);
       }
     }
+
+    sapper.addEventListener('mousedown', this.mouseDownWindow);
+  },
+  
+  mouseDownWindow: function() {
+    var sapper = document.getElementById('sapper');
+    var draggble = sapper.parentNode;
+    
+    if (event.target === sapper || event.target.className === 'field') {
+      sapper.className = 'moveWindow';
+      var getCoords = function(elem) {
+        var box = elem.getBoundingClientRect();
+        return {
+          top: box.top + pageYOffset,
+          left: box.left + pageXOffset,
+        }
+      }
+      var coords = getCoords(sapper);
+      var shiftX = event.pageX - coords.left;
+      var shiftY = event.pageY - coords.top;
+      function mouseMoveWindow() {
+        var x = event.pageX;
+        var y = event.pageY;
+        sapper.style.top = y - shiftY + 'px';
+        sapper.style.left = x - shiftX + 'px';
+      }
+      function mouseUpWindow() {
+        draggble.removeEventListener('mousemove', mouseMoveWindow);
+      }
+      sapper.addEventListener('dragstart', function() { event.preventDefault(); });
+      draggble.addEventListener('mousemove', mouseMoveWindow);
+      draggble.addEventListener('mouseup', mouseUpWindow);
+    }
+    
+    return false;
   },
 
   generateArrayNodeElements: function () {
@@ -145,7 +180,6 @@ var MyMineSweeper = {
     if (this.gameActive) {
       var sapper = document.getElementById('sapper');
       event.preventDefault();
-
       if (this.flagCount > 0 && event.target.textContent === 'C') {
         while (event.target.firstChild) {
           event.target.removeChild(event.target.firstChild);
@@ -175,6 +209,7 @@ var MyMineSweeper = {
   },
 
   clickOnCell: function (data, x, y) {
+    event.stopPropagation();
     var arrayNode = this.generateArrayNodeElements();
     if (this.gameActive) {
       if (event.target.textContent === 'C') {
