@@ -1,12 +1,14 @@
+obj = {}
+
 var MyMineSweeper = {
   init: function (obj) {
     this.gameActive = true;
-    this.Width = obj ? obj.Width : 10;
-    this.Height = obj ? obj.Height : 10;
-    this.bomb = obj ? obj.bomb : 15;
+    this.Width = obj.Width ? obj.Width : 10;
+    this.Height = obj.Height ? obj.Height : 10;
+    this.bomb = obj.bomb ? obj.bomb : 10;
     this.data = [];
     this.defusedBombsCount = 0;
-    this.flagCount = 0;
+    this.flagCount = this.bomb;
     this.generateData();
   },
 
@@ -98,12 +100,18 @@ var MyMineSweeper = {
       timer.innerHTML = timerVal;
     }, 1000);
   },
-
+  
   generateGUI: function () {
     var sapper = document.getElementById('sapper');
     var field = document.createElement('div');
+    this.afreshContainer = document.createElement('div');
+    this.gameOverTextField = document.createElement('div');
+    this.afreshContainer.className = 'afreshContainer';
+    this.afreshContainer.innerHTML = '<button id="afreshButton">Restart</button><div class="flagCount">'+ this.flagCount +'</div>';
+    
     field.className = 'field';
     this.createTimer(sapper);
+    sapper.appendChild(this.gameOverTextField);
     // Generate fields
     for (var i = 0; i < this.data.length; i += 1) {
       var row = document.createElement('div');
@@ -123,41 +131,46 @@ var MyMineSweeper = {
         row.appendChild(hiddenCell);
       }
     }
-
+    
+    sapper.appendChild(this.afreshContainer);
+    var afreshButton = document.getElementById('afreshButton');
+    afreshButton.addEventListener('click', this.restartEvent);
     sapper.addEventListener('mousedown', this.mouseDownWindow);
   },
   
+  restartEvent: function() {
+    while (sapper.firstChild) {
+      sapper.removeChild(sapper.firstChild);
+    }
+    MyMineSweeper.init(obj)
+  },
+
   mouseDownWindow: function() {
     var sapper = document.getElementById('sapper');
     var draggble = sapper.parentNode;
-    
-    if (event.target === sapper || event.target.className === 'field') {
-      sapper.className = 'moveWindow';
-      var getCoords = function(elem) {
-        var box = elem.getBoundingClientRect();
-        return {
-          top: box.top + pageYOffset,
-          left: box.left + pageXOffset,
-        }
+    sapper.className = 'moveWindow';
+    function getCoords (elem) {
+      var box = elem.getBoundingClientRect();
+      return {
+        top: box.top + pageYOffset,
+        left: box.left + pageXOffset,
       }
-      var coords = getCoords(sapper);
-      var shiftX = event.pageX - coords.left;
-      var shiftY = event.pageY - coords.top;
-      function mouseMoveWindow() {
-        var x = event.pageX;
-        var y = event.pageY;
-        sapper.style.top = y - shiftY + 'px';
-        sapper.style.left = x - shiftX + 'px';
-      }
-      function mouseUpWindow() {
-        draggble.removeEventListener('mousemove', mouseMoveWindow);
-      }
-      sapper.addEventListener('dragstart', function() { event.preventDefault(); });
-      draggble.addEventListener('mousemove', mouseMoveWindow);
-      draggble.addEventListener('mouseup', mouseUpWindow);
     }
-    
-    return false;
+    var coords = getCoords(sapper);
+    var shiftX = event.pageX - coords.left;
+    var shiftY = event.pageY - coords.top;
+    function mouseMoveWindow() {
+      var x = event.pageX;
+      var y = event.pageY;
+      sapper.style.top = y - shiftY + 'px';
+      sapper.style.left = x - shiftX + 'px';
+    }
+    function mouseUpWindow() {
+      draggble.removeEventListener('mousemove', mouseMoveWindow);
+    }
+    sapper.addEventListener('dragstart', function() { event.preventDefault(); });
+    draggble.addEventListener('mousemove', mouseMoveWindow);
+    draggble.addEventListener('mouseup', mouseUpWindow);
   },
 
   generateArrayNodeElements: function () {
@@ -180,28 +193,29 @@ var MyMineSweeper = {
     if (this.gameActive) {
       var sapper = document.getElementById('sapper');
       event.preventDefault();
-      if (this.flagCount > 0 && event.target.textContent === 'C') {
+
+      if (this.flagCount < this.bomb && event.target.textContent === 'C') {
         while (event.target.firstChild) {
           event.target.removeChild(event.target.firstChild);
         }
-        this.flagCount -= 1;
-      } else if (this.flagCount < this.bomb && !event.target.getAttribute('data-check')) {
-        event.target.innerHTML = 'C';
         this.flagCount += 1;
+      } else if (this.flagCount > 0 && !event.target.getAttribute('data-check')) {
+        event.target.innerHTML = 'C';
+        this.flagCount -= 1;
       }
-
+      
       if (data[x][y] === 88 && event.target.textContent === 'C') {
         this.defusedBombsCount += 1;
-      } else if (this.flagCount < this.bomb && data[x][y] === 88 && event.target.textContent !== 'C') {
+      } else if (this.flagCount > 0 && data[x][y] === 88 && event.target.textContent !== 'C') {
         this.defusedBombsCount -= 1;
       }
 
+      this.afreshContainer.innerHTML = '<button id="afreshButton">Restart</button><div class="flagCount">'+ this.flagCount +'</div>';
+      var afreshButton = document.getElementById('afreshButton');
+      afreshButton.addEventListener('click', this.restartEvent);
       // win event
       if (this.defusedBombsCount === this.bomb) {
-        var win = document.createElement('div');
-        win.className = 'winContainer';
-        win.innerHTML = 'You win!';
-        sapper.appendChild(win);
+        this.gameOverTextField.innerHTML = 'You win!';
         clearInterval(this.timer); 
         this.gameActive = false;
       }
@@ -216,6 +230,8 @@ var MyMineSweeper = {
         while (event.target.firstChild) {
           event.target.removeChild(event.target.firstChild);
         }
+        this.flagCount += 1;
+        this.afreshContainer.innerHTML = '<button id="afreshButton">Restart</button><div class="flagCount">'+ this.flagCount +'</div>';
       }
 
       // Enter from recursion
@@ -233,12 +249,9 @@ var MyMineSweeper = {
         this.clickOnCell(data, x-1, y); // Up
         this.clickOnCell(data, x-1, y-1); // Up Left
       } else if (data[x][y] === 88) {
-        var loss = document.createElement('div');
-        loss.className = 'lossContainer';
-        loss.innerHTML = 'You loss';
-        sapper.appendChild(loss);
         clearInterval(this.timer); 
         this.gameActive = false;
+        this.gameOverTextField.innerHTML = 'You loss'
       } else {
         arrayNode[x][y].innerHTML = data[x][y];
       }
@@ -246,4 +259,4 @@ var MyMineSweeper = {
   }
 };
 
-MyMineSweeper.init();
+MyMineSweeper.init(obj);
